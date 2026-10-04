@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cart | My General Store</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="logo">🛒 My General Store</div>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('products') }}">Products</a>
+            <a href="{{ url_for('cart') }}">Cart</a>
+            <a href="{{ url_for('checkout') }}">Checkout</a>
+            <a href="{{ url_for('admin') }}">Admin</a>
+        </nav>
+    </header>
+
+    <main class="page-shell cart-page">
+        <h1>Your Cart</h1>
+
+        {% if cart_items %}
+            <div class="cart-list">
+                {% for item in cart_items %}
+                    <div class="cart-item">
+                        <div class="cart-item-image">
+                            <img src="{{ item['image'] }}" alt="{{ item['name'] }}">
+                        </div>
+                        <div class="cart-item-info">
+                            <h3>{{ item['name'] }}</h3>
+                            <p>KES {{ '%.2f' % item['price'] }} each</p>
+                            <p>Quantity: {{ item['quantity'] }}</p>
+                        </div>
+                        <div class="cart-item-total">
+                            <strong>KES {{ '%.2f' % item['subtotal'] }}</strong>
+                            <form method="post" action="{{ url_for('remove_product_from_cart', product_id=item['id']) }}">
+                                <button type="submit" class="btn danger">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="summary-box">
+                <h3>Order Summary</h3>
+                <div class="summary-row">
+                    <span>Total</span>
+                    <strong>KES {{ '%.2f' % total }}</strong>
+                </div>
+                <a class="btn primary full" href="{{ url_for('checkout') }}">Proceed to Checkout</a>
+            </div>
+        {% else %}
+            <p class="empty-state">Your cart is empty. Start by adding some products.</p>
+        {% endif %}
+    </main>
+</body>
+</html>

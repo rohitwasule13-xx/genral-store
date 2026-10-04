@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | My General Store</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="logo">🛒 My General Store</div>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('products') }}">Products</a>
+            <a href="{{ url_for('cart') }}">Cart</a>
+            <a href="{{ url_for('checkout') }}">Checkout</a>
+            <a href="{{ url_for('admin') }}">Admin</a>
+        </nav>
+    </header>
+
+    <main class="page-shell checkout-page">
+        <h1>Checkout</h1>
+
+        {% if success %}
+            <div class="success-box">
+                <h3>Order placed successfully!</h3>
+                <p>Your order number is <strong>#{{ order_id }}</strong>.</p>
+                <p>Total paid: <strong>KES {{ '%.2f' % total }}</strong></p>
+                <a class="btn primary" href="{{ url_for('products') }}">Continue Shopping</a>
+            </div>
+        {% else %}
+            {% if error %}
+                <p class="error-message">{{ error }}</p>
+            {% endif %}
+
+            <div class="checkout-layout">
+                <form method="post" class="checkout-form">
+                    <label>
+                        Full Name
+                        <input type="text" name="customer_name" placeholder="Enter your name" required>
+                    </label>
+                    <label>
+                        Phone Number
+                        <input type="text" name="phone" placeholder="Enter your phone number" required>
+                    </label>
+                    <label>
+                        Delivery Address
+                        <textarea name="address" rows="4" placeholder="Enter your address" required></textarea>
+                    </label>
+                    <button type="submit" class="btn primary full">Place Order</button>
+                </form>
+
+                <aside class="summary-box">
+                    <h3>Order Summary</h3>
+                    {% for item in cart_items %}
+                        <div class="summary-row">
+                            <span>{{ item['name'] }} x {{ item['quantity'] }}</span>
+                            <strong>KES {{ '%.2f' % item['subtotal'] }}</strong>
+                        </div>
+                    {% endfor %}
+                    <div class="summary-row total-row">
+                        <span>Total</span>
+                        <strong>KES {{ '%.2f' % total }}</strong>
+                    </div>
+                </aside>
+            </div>
+        {% endif %}
+    </main>
+</body>
+</html>

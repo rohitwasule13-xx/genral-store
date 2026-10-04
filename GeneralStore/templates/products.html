@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products | My General Store</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="logo">🛒 My General Store</div>
+        <nav>
+            <a href="{{ url_for('home') }}">Home</a>
+            <a href="{{ url_for('products') }}">Products</a>
+            <a href="{{ url_for('cart') }}">Cart</a>
+            <a href="{{ url_for('checkout') }}">Checkout</a>
+            <a href="{{ url_for('admin') }}">Admin</a>
+        </nav>
+    </header>
+
+    <main class="page-shell">
+        <section class="page-header">
+            <h1>Our Products</h1>
+            <form class="search-box" method="get">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Search products or categories...">
+                <button type="submit">Search</button>
+            </form>
+        </section>
+
+        <section class="product-grid">
+            {% for product in products %}
+                <article class="product-card">
+                    <img src="{{ product['image'] }}" alt="{{ product['name'] }}">
+                    <div class="product-info">
+                        <span class="badge">{{ product['category'] }}</span>
+                        <h3>{{ product['name'] }}</h3>
+                        <p>{{ product['description'] }}</p>
+                        <div class="product-meta">
+                            <strong>KES {{ '%.2f' % product['price'] }}</strong>
+                            <span>Stock: {{ product['stock'] }}</span>
+                        </div>
+                        <form method="post" action="{{ url_for('add_product_to_cart', product_id=product['id']) }}">
+                            <button type="submit" class="btn primary">Add to Cart</button>
+                        </form>
+                    </div>
+                </article>
+            {% else %}
+                <p class="empty-state">No products found matching your search.</p>
+            {% endfor %}
+        </section>
+    </main>
+</body>
+</html>
