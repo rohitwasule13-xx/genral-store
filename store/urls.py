@@ -1,3 +1,11 @@
 from django.urls import path
 
-urlpatterns = []
+from . import views
+
+urlpatterns = [
+    path("", views.home, name="home"),
+    path("products/", views.products, name="products"),
+    path("cart/", views.cart, name="cart"),
+    path("checkout/", views.checkout, name="checkout"),
+    path("admin-panel/", views.admin_panel, name="admin_panel"),
+]

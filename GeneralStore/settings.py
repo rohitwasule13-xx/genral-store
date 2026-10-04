@@ -10,16 +10,17 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",")
     if host.strip()
 ]
+ALLOWED_HOSTS.append("*")
 RENDER_HOST = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_HOST:
     ALLOWED_HOSTS.append(RENDER_HOST)
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "http://localhost:8000,https://localhost:8000,http://127.0.0.1:8000,https://127.0.0.1:8000").split(",")
     if origin.strip()
 ]
 if RENDER_HOST:
@@ -51,7 +52,7 @@ ROOT_URLCONF = "GeneralStore.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "templates"],
+        "DIRS": [BASE_DIR / "GeneralStore" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -88,7 +89,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "static"] if (BASE_DIR / "static").exists() else []
+STATICFILES_DIRS = [BASE_DIR / "GeneralStore" / "static"] if (BASE_DIR / "GeneralStore" / "static").exists() else []
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
