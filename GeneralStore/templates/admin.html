@@ -3,80 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin | My General Store</title>
+    <title>Admin Dashboard | My General Store</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="admin-page">
     <header class="topbar">
-        <div class="logo">🛒 My General Store</div>
+        <div class="logo">🛒 Store Admin</div>
         <nav>
-            <a href="{{ url_for('home') }}">Home</a>
-            <a href="{{ url_for('products') }}">Products</a>
-            <a href="{{ url_for('cart') }}">Cart</a>
-            <a href="{{ url_for('checkout') }}">Checkout</a>
-            <a href="{{ url_for('admin') }}">Admin</a>
+            <a href="{{ url_for('home') }}">View Store</a>
+            <a href="#products">Products</a>
+            <a href="#orders">Orders</a>
+            <form method="post" action="{{ url_for('admin_logout') }}"><button class="nav-button" type="submit">Sign out</button></form>
         </nav>
     </header>
 
-    <main class="page-shell">
-        <h1>Admin Panel</h1>
-
-        <section>
-            <h2>Customer Orders</h2>
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Customer</th>
-                        <th>Phone</th>
-                        <th>Address</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders %}
-                        <tr>
-                            <td>#{{ order['id'] }}</td>
-                            <td>{{ order['customer_name'] }}</td>
-                            <td>{{ order['phone'] }}</td>
-                            <td>{{ order['address'] }}</td>
-                            <td>KES {{ '%.2f' % order['total_amount'] }}</td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="5" class="empty-state">No orders have been placed yet.</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <main class="page-shell admin-shell">
+        <section class="admin-heading">
+            <div>
+                <p class="eyebrow">Store management</p>
+                <h1>Admin dashboard</h1>
+                <p>Manage your inventory and keep track of customer orders.</p>
+            </div>
+            <a class="btn primary" href="#add-product">＋ Add product</a>
         </section>
 
-        <section style="margin-top: 30px;">
-            <h2>Order Items</h2>
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Order ID</th>
-                        <th>Product</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in order_items %}
+        <section class="admin-stats" aria-label="Store summary">
+            <article class="admin-stat"><span>Products</span><strong>{{ stats.product_count }}</strong></article>
+            <article class="admin-stat"><span>Orders</span><strong>{{ stats.order_count }}</strong></article>
+            <article class="admin-stat"><span>Total sales</span><strong>KES {{ '%.2f' % stats.revenue }}</strong></article>
+            <article class="admin-stat"><span>Low stock items</span><strong>{{ stats.low_stock }}</strong></article>
+        </section>
+
+        {% if request.args.get('error') %}
+            <p class="error-message">{{ request.args.get('error') }}</p>
+        {% elif request.args.get('saved') == 'product' %}
+            <p class="admin-notice">Product added successfully.</p>
+        {% elif request.args.get('saved') == 'deleted' %}
+            <p class="admin-notice">Product removed.</p>
+        {% elif request.args.get('saved') == 'updated' %}
+            <p class="admin-notice">Product updated.</p>
+        {% endif %}
+
+        <section class="admin-section" id="products">
+            <div class="admin-section-heading">
+                <div><h2>Products</h2><p>{{ products|length }} items in your catalog</p></div>
+            </div>
+            <div class="admin-panel" id="add-product">
+                <h3>Add a product</h3>
+                <form class="admin-product-form" method="post" action="{{ url_for('create_product') }}">
+                    <label>Product name<input name="name" required maxlength="120" placeholder="e.g. Fresh milk"></label>
+                    <label>Category<input name="category" required maxlength="80" placeholder="e.g. Groceries"></label>
+                    <label>Price (KES)<input name="price" type="number" min="0" step="0.01" required placeholder="0.00"></label>
+                    <label>Stock quantity<input name="stock" type="number" min="0" step="1" required placeholder="0"></label>
+                    <label class="admin-form-wide">Image URL<input name="image" type="url" placeholder="https://…"></label>
+                    <label class="admin-form-wide">Description<textarea name="description" rows="2" placeholder="Short product description"></textarea></label>
+                    <button class="btn primary" type="submit">Add product</button>
+                </form>
+            </div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Action</th></tr></thead>
+                    <tbody>
+                    {% for product in products %}
                         <tr>
-                            <td>#{{ item['order_id'] }}</td>
-                            <td>{{ item['name'] }}</td>
-                            <td>{{ item['quantity'] }}</td>
-                            <td>KES {{ '%.2f' % item['price'] }}</td>
+                            <td><div class="admin-product-name">{% if product['image'] %}<img src="{{ product['image'] }}" alt="">{% endif %}<strong>{{ product['name'] }}</strong></div></td>
+                            <td>{{ product['category'] }}</td>
+                            <td colspan="2">
+                                <form class="inventory-edit" method="post" action="{{ url_for('update_product', product_id=product['id']) }}">
+                                    <label>Price <input aria-label="Price for {{ product['name'] }}" name="price" type="number" min="0" step="0.01" value="{{ '%.2f' % product['price'] }}" required></label>
+                                    <label>Stock <input aria-label="Stock for {{ product['name'] }}" name="stock" type="number" min="0" step="1" value="{{ product['stock'] }}" required></label>
+                                    <button type="submit">Save</button>
+                                </form>
+                            </td>
+                            <td><form method="post" action="{{ url_for('delete_product', product_id=product['id']) }}" onsubmit="return confirm('Remove this product from the catalog?')"><button class="text-danger" type="submit">Remove</button></form></td>
                         </tr>
                     {% else %}
-                        <tr>
-                            <td colspan="4" class="empty-state">No order details available.</td>
-                        </tr>
+                        <tr><td colspan="5" class="empty-state">No products in the catalog yet.</td></tr>
                     {% endfor %}
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-section" id="orders">
+            <div class="admin-section-heading"><div><h2>Customer orders</h2><p>Most recent orders appear first.</p></div></div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Delivery address</th><th>Total</th><th>Date</th></tr></thead>
+                    <tbody>
+                    {% for order in orders %}
+                        <tr><td><strong>#{{ order['id'] }}</strong></td><td>{{ order['customer_name'] }}</td><td>{{ order['phone'] }}</td><td>{{ order['address'] }}</td><td>KES {{ '%.2f' % order['total_amount'] }}</td><td>{{ order['created_at'] }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="6" class="empty-state">No orders have been placed yet.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-section">
+            <div class="admin-section-heading"><div><h2>Order items</h2><p>Items included in customer orders.</p></div></div>
+            <div class="admin-table-wrap">
+                <table class="admin-table">
+                    <thead><tr><th>Order</th><th>Product</th><th>Quantity</th><th>Unit price</th></tr></thead>
+                    <tbody>
+                    {% for item in order_items %}
+                        <tr><td>#{{ item['order_id'] }}</td><td>{{ item['name'] }}</td><td>{{ item['quantity'] }}</td><td>KES {{ '%.2f' % item['price'] }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="4" class="empty-state">No order details available.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </section>
     </main>
 </body>

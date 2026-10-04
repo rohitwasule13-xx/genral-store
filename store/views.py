@@ -1,4 +1,5 @@
 from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
 
 
 PRODUCTS = [
@@ -177,6 +178,7 @@ def checkout(request):
     return HttpResponse(html)
 
 
+@staff_member_required
 def admin_panel(request):
     orders = [
         ("#1001", "Aisha", "0712345678", "KES 350.00"),

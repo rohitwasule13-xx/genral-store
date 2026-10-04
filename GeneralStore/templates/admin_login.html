@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | My General Store</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <header class="topbar">
+        <div class="logo">🛒 Store Admin</div>
+        <nav><a href="{{ url_for('home') }}">View Store</a></nav>
+    </header>
+    <main class="admin-login-shell">
+        <form class="admin-login-card" method="post">
+            <p class="eyebrow">Store management</p>
+            <h1>Admin sign in</h1>
+            <p class="login-description">Sign in to manage products and customer orders.</p>
+            {% if error %}<p class="error-message" role="alert">{{ error }}</p>{% endif %}
+            {% if not configured and not error %}
+                <p class="error-message" role="alert">Admin login is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in the app environment.</p>
+            {% endif %}
+            <label>Username<input name="username" autocomplete="username" required></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+            <button class="btn primary full" type="submit" {% if not configured %}disabled{% endif %}>Sign in</button>
+        </form>
+    </main>
+</body>
+</html>

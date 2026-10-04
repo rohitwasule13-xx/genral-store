@@ -1,9 +1,13 @@
 import os
 import sqlite3
+import math
+import hmac
+import secrets
+from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session
 
 app = Flask(__name__)
-app.secret_key = "general-store-secret-key"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "store.db")
 
@@ -12,6 +16,15 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def admin_required(view):
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if not session.get("is_admin"):
+            return redirect(url_for("admin_login"))
+        return view(*args, **kwargs)
+    return wrapped_view
 
 
 def init_db():
@@ -218,17 +231,118 @@ def checkout():
     return render_template("checkout.html", cart_items=items, total=total)
 
 
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if session.get("is_admin"):
+        return redirect(url_for("admin"))
+
+    admin_username = os.environ.get("ADMIN_USERNAME")
+    admin_password = os.environ.get("ADMIN_PASSWORD")
+    configured = bool(admin_username and admin_password)
+    error = None
+
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if not configured:
+            error = "Admin login is not configured. Set ADMIN_USERNAME and ADMIN_PASSWORD in the app environment."
+        elif hmac.compare_digest(username.encode("utf-8"), admin_username.encode("utf-8")) and hmac.compare_digest(password.encode("utf-8"), admin_password.encode("utf-8")):
+            session.clear()
+            session["is_admin"] = True
+            return redirect(url_for("admin"))
+        else:
+            error = "The username or password is incorrect."
+
+    return render_template("admin_login.html", configured=configured, error=error)
+
+
+@app.route("/admin/logout", methods=["POST"])
+@admin_required
+def admin_logout():
+    session.clear()
+    return redirect(url_for("admin_login"))
+
+
 @app.route("/admin")
+@admin_required
 def admin():
     conn = get_db_connection()
+    products = conn.execute("SELECT * FROM products ORDER BY name").fetchall()
     orders = conn.execute(
         "SELECT * FROM orders ORDER BY created_at DESC"
     ).fetchall()
     order_items = conn.execute(
         "SELECT oi.order_id, p.name, oi.quantity, oi.price FROM order_items oi JOIN products p ON oi.product_id = p.id ORDER BY oi.order_id DESC"
     ).fetchall()
+    stats = {
+        "product_count": conn.execute("SELECT COUNT(*) FROM products").fetchone()[0],
+        "order_count": conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0],
+        "revenue": conn.execute("SELECT COALESCE(SUM(total_amount), 0) FROM orders").fetchone()[0],
+        "low_stock": conn.execute("SELECT COUNT(*) FROM products WHERE stock <= 5").fetchone()[0],
+    }
     conn.close()
-    return render_template("admin.html", orders=orders, order_items=order_items)
+    return render_template("admin.html", products=products, orders=orders, order_items=order_items, stats=stats)
+
+
+@app.route("/admin/products/create", methods=["POST"])
+@admin_required
+def create_product():
+    name = request.form.get("name", "").strip()
+    category = request.form.get("category", "").strip()
+    description = request.form.get("description", "").strip()
+    image = request.form.get("image", "").strip()
+    try:
+        price = float(request.form.get("price", ""))
+        stock = int(request.form.get("stock", ""))
+    except ValueError:
+        return redirect(url_for("admin", error="Enter a valid price and stock quantity.") + "#products")
+
+    if not name or not category or not math.isfinite(price) or price < 0 or stock < 0:
+        return redirect(url_for("admin", error="Complete all required fields with valid values.") + "#products")
+
+    conn = get_db_connection()
+    conn.execute(
+        "INSERT INTO products (name, category, price, stock, image, description) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, category, price, stock, image, description),
+    )
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin", saved="product") + "#products")
+
+
+@app.route("/admin/products/<int:product_id>/delete", methods=["POST"])
+@admin_required
+def delete_product(product_id):
+    conn = get_db_connection()
+    has_order_history = conn.execute(
+        "SELECT 1 FROM order_items WHERE product_id = ? LIMIT 1", (product_id,)
+    ).fetchone()
+    if has_order_history:
+        conn.close()
+        return redirect(url_for("admin", error="This product is part of an order and cannot be removed.") + "#products")
+    conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin", saved="deleted") + "#products")
+
+
+@app.route("/admin/products/<int:product_id>/update", methods=["POST"])
+@admin_required
+def update_product(product_id):
+    try:
+        price = float(request.form.get("price", ""))
+        stock = int(request.form.get("stock", ""))
+    except ValueError:
+        return redirect(url_for("admin", error="Enter a valid price and stock quantity.") + "#products")
+
+    if not math.isfinite(price) or price < 0 or stock < 0:
+        return redirect(url_for("admin", error="Price and stock must be zero or greater.") + "#products")
+
+    conn = get_db_connection()
+    conn.execute("UPDATE products SET price = ?, stock = ? WHERE id = ?", (price, stock, product_id))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin", saved="updated") + "#products")
 
 
 init_db()
